@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/MobiAucAndroid.iml" filepath="$PROJECT_DIR$/MobiAucAndroid.iml" />
+      <module fileurl="file://$PROJECT_DIR$/buyer/buyer.iml" filepath="$PROJECT_DIR$/buyer/buyer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/seller/seller.iml" filepath="$PROJECT_DIR$/seller/seller.iml" />
+    </modules>
+  </component>
+</project>
