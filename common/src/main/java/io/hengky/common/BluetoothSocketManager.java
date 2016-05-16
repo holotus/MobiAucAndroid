@@ -1,9 +1,9 @@
-package io.hengky.mobiaucbuyer;
+package io.hengky.common;
 
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
-import android.content.Intent;
 import android.util.Log;
 
 import java.io.IOException;
@@ -17,10 +17,13 @@ import java.util.UUID;
 public class BluetoothSocketManager {
     private static final String LOG_TAG = BluetoothSocketManager.class.getSimpleName();
 
-    static final String SDP_NAME = "MobiAuc - Buyer";
+    static final String SDP_NAME = "MobiAucBluetooth";
     static final UUID SDP_UUID = UUID.fromString("53a4dd29-9eac-4556-9d24-c3e95b3c6f4b");
 
     BluetoothAdapter mBluetoothAdapter;
+    AcceptThread mAcceptThread;
+    ConnectThread mConnectThread;
+    ConnectedThread mConnectedThread;
 
     private static BluetoothSocketManager ourInstance = new BluetoothSocketManager();
 
@@ -48,7 +51,13 @@ public class BluetoothSocketManager {
     }
 
     public void startAccept() {
-        new AcceptThread();
+        mAcceptThread = new AcceptThread();
+        mAcceptThread.start();
+    }
+
+    public void startConnect(BluetoothDevice device) {
+        mConnectThread = new ConnectThread(device);
+        mConnectThread.start();
     }
 
     private class AcceptThread extends Thread {
@@ -61,7 +70,7 @@ public class BluetoothSocketManager {
 
             try {
                 // MY_UUID is the app's UUID string, also used by the client code
-                tmp = mBluetoothAdapter.listenUsingRfcommWithServiceRecord(SDP_NAME, SDP_UUID);
+                tmp = mBluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(SDP_NAME, SDP_UUID);
             } catch (IOException e) {
                 Log.e(LOG_TAG, "", e);
             }
@@ -86,15 +95,16 @@ public class BluetoothSocketManager {
                 if (socket != null) {
                     // Do work to manage the connection (in a separate thread)
 
-                    new ConnectedThread(socket);
+                    mConnectedThread = new ConnectedThread(socket);
+                    mConnectedThread.start();
 
-                    try {
-                        mServerSocket.close();
-                    } catch (IOException e) {
-                        Log.e(LOG_TAG, "", e);
-                    }
+//                    try {
+//                        mServerSocket.close();
+//                    } catch (IOException e) {
+//                        Log.e(LOG_TAG, "", e);
+//                    }
 
-                    break;
+//                    break;
                 }
             }
         }
@@ -106,9 +116,68 @@ public class BluetoothSocketManager {
             try {
                 mServerSocket.close();
             } catch (IOException e) {
+                Log.e(LOG_TAG, "", e);
             }
         }
     }
+
+    private class ConnectThread extends Thread {
+        private final BluetoothSocket mmSocket;
+        private final BluetoothDevice mmDevice;
+
+        public ConnectThread(BluetoothDevice device) {
+            // Use a temporary object that is later assigned to mmSocket,
+            // because mmSocket is final
+            BluetoothSocket tmp = null;
+            mmDevice = device;
+
+            // Get a BluetoothSocket to connect with the given BluetoothDevice
+            try {
+                // MY_UUID is the app's UUID string, also used by the server code
+                tmp = device.createInsecureRfcommSocketToServiceRecord(SDP_UUID);
+            } catch (IOException e) {
+                Log.e(LOG_TAG, "", e);
+            }
+            mmSocket = tmp;
+        }
+
+        public void run() {
+            // Cancel discovery because it will slow down the connection
+            mBluetoothAdapter.cancelDiscovery();
+
+            try {
+                // Connect the device through the socket. This will block
+                // until it succeeds or throws an exception
+                mmSocket.connect();
+            } catch (IOException connectException) {
+                // Unable to connect; close the socket and get out
+                Log.e(LOG_TAG, "", connectException);
+
+                try {
+                    mmSocket.close();
+                } catch (IOException closeException) {
+                    Log.e(LOG_TAG, "", closeException);
+                }
+                return;
+            }
+
+            // Do work to manage the connection (in a separate thread)
+            mConnectedThread = new ConnectedThread(mmSocket);
+            mConnectedThread.start();
+        }
+
+        /**
+         * Will cancel an in-progress connection, and close the socket
+         */
+        public void cancel() {
+            try {
+                mmSocket.close();
+            } catch (IOException e) {
+                Log.e(LOG_TAG, "", e);
+            }
+        }
+    }
+
 
     private class ConnectedThread extends Thread {
         private final BluetoothSocket mmSocket;
@@ -173,6 +242,12 @@ public class BluetoothSocketManager {
             } catch (IOException e) {
                 Log.e(LOG_TAG, "", e);
             }
+        }
+    }
+
+    public void write(byte[] bytes) {
+        if (mConnectedThread != null) {
+            mConnectedThread.write(bytes);
         }
     }
 }
