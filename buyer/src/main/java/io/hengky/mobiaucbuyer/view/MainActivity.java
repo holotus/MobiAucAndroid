@@ -1,92 +1,110 @@
 package io.hengky.mobiaucbuyer.view;
 
+import android.Manifest;
+import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.databinding.DataBindingUtil;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.CompoundButton;
+import android.widget.TextView;
 
 import java.util.Date;
+import java.util.List;
 
+import io.hengky.common.BaseMainActivity;
 import io.hengky.common.BluetoothSocketManager;
+import io.hengky.common.Device;
+import io.hengky.common.DeviceManager;
+import io.hengky.mobiaucbuyer.R;
+import io.hengky.mobiaucbuyer.databinding.ActivityMainBinding;
+import io.hengky.mobiaucbuyer.databinding.ViewDeviceListItemBinding;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
 
 
 /**
  * Created by yip on 16/5/16.
  */
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseMainActivity {
 
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
-
-    BluetoothAdapter mBluetoothAdapter;
+    private ArrayAdapter<Device> arrayAdapter;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
 
-        {
-            // Register for broadcasts when a device is discovered
-            IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
-            this.registerReceiver(mReceiver, filter);
+        ActivityMainBinding dataBinding = DataBindingUtil.setContentView(this, R.layout.activity_main);
 
-            // Register for broadcasts when discovery has finished
-            filter = new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
-            this.registerReceiver(mReceiver, filter);
-        }
+        dataBinding.setState(this);
 
         {
-            mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-            mBluetoothAdapter.startDiscovery();
+            dataBinding.updateBtn.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    startDiscovery();
+                }
+            });
+        }
+        {
+            dataBinding.price1Btn.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    DeviceManager.getInstance().broadcasePrice(5);
+                }
+            });
+        }
+        {
+            dataBinding.price2Btn.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    DeviceManager.getInstance().broadcasePrice(99);
+                }
+            });
+        }
+        {
+            dataBinding.powerSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    setDiscoverable(isChecked);
+                }
+            });
+        }
+        {
+            arrayAdapter = new ArrayAdapter<Device>(this, R.layout.view_device_list_item, R.id.title_txt) {
+                @Override
+                public View getView(int position, View convertView, ViewGroup parent) {
+                    ViewDeviceListItemBinding binding = ViewDeviceListItemBinding.inflate(getLayoutInflater(), parent, false);
+                    binding.setDevice(arrayAdapter.getItem(position));
+                    return binding.getRoot();
+                }
+            };
+
+            dataBinding.deviceList.setAdapter(arrayAdapter);
+            DeviceManager.getInstance().observeOn(AndroidSchedulers.mainThread()).subscribe(new Action1<List<Device>>() {
+                @Override
+                public void call(List<Device> devices) {
+                    arrayAdapter.clear();
+                    arrayAdapter.addAll(devices);
+                }
+            });
         }
 
-        findViewById(android.R.id.content).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.i(LOG_TAG, new Date().toString());
-                BluetoothSocketManager.getInstance().write(new Date().toString().getBytes());
-            }
-        });
     }
 
-    /**
-     * The BroadcastReceiver that listens for discovered devices and changes the title when
-     * discovery is finished
-     */
-    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-
-            // When discovery finds a device
-            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-                // Get the BluetoothDevice object from the Intent
-                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-
-                Log.i(LOG_TAG, "******: " + device.getName());
-
-                BluetoothSocketManager.getInstance().startConnect(device);
-
-                // If it's already paired, skip it, because it's been listed already
-//                if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
-//                    mNewDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
-//                }
-                // When discovery is finished, change the Activity title
-            } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
-                Log.i(LOG_TAG, "ACTION_DISCOVERY_FINISHED");
-
-//                setProgressBarIndeterminateVisibility(false);
-//                setTitle(R.string.select_device);
-//                if (mNewDevicesArrayAdapter.getCount() == 0) {
-//                    String noDevices = getResources().getText(R.string.none_found).toString();
-//                    mNewDevicesArrayAdapter.add(noDevices);
-//                }
-            }
-        }
-    };
 }
