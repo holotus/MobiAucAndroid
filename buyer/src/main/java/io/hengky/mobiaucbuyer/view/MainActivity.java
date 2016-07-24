@@ -20,6 +20,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.CompoundButton;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.util.Date;
@@ -42,6 +43,9 @@ import rx.functions.Action1;
 public class MainActivity extends BaseMainActivity {
 
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
+    public static final int MIN_PRICE = 50;
+    public static final int MAX_PRICE = 100;
+
     private ArrayAdapter<Device> arrayAdapter;
 
     @Override
@@ -52,31 +56,36 @@ public class MainActivity extends BaseMainActivity {
         ActivityMainBinding dataBinding = DataBindingUtil.setContentView(this, R.layout.activity_main);
 
         dataBinding.setState(this);
+        dataBinding.setDeviceManager(DeviceManager.getInstance());
 
-        {
-            dataBinding.updateBtn.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    startDiscovery();
-                }
-            });
-        }
-        {
-            dataBinding.price1Btn.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    DeviceManager.getInstance().broadcasePrice(5);
-                }
-            });
-        }
-        {
-            dataBinding.price2Btn.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    DeviceManager.getInstance().broadcasePrice(99);
-                }
-            });
-        }
+        // set price to middle
+        DeviceManager.getInstance().price.set((MAX_PRICE + MIN_PRICE) / 2);
+
+//        {
+//            dataBinding.updateBtn.setOnClickListener(new View.OnClickListener() {
+//                @Override
+//                public void onClick(View v) {
+//                    startDiscovery();
+//                }
+//            });
+//        }
+//        {
+//            dataBinding.price1Btn.setOnClickListener(new View.OnClickListener() {
+//                @Override
+//                public void onClick(View v) {
+//                    DeviceManager.getInstance().broadcasePrice(5);
+//                }
+//            });
+//        }
+//        {
+//            dataBinding.price2Btn.setOnClickListener(new View.OnClickListener() {
+//                @Override
+//                public void onClick(View v) {
+//                    DeviceManager.getInstance().broadcasePrice(99);
+//                }
+//            });
+//        }
+
         {
             dataBinding.powerSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 @Override
@@ -85,6 +94,26 @@ public class MainActivity extends BaseMainActivity {
                 }
             });
         }
+
+        {
+            dataBinding.priceBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    DeviceManager.getInstance().price.set(progress + MIN_PRICE);
+                }
+
+                @Override
+                public void onStartTrackingTouch(SeekBar seekBar) {
+                    // do nothing
+                }
+
+                @Override
+                public void onStopTrackingTouch(SeekBar seekBar) {
+                    // do nothing
+                }
+            });
+        }
+
         {
             arrayAdapter = new ArrayAdapter<Device>(this, R.layout.view_device_list_item, R.id.title_txt) {
                 @Override
@@ -107,4 +136,7 @@ public class MainActivity extends BaseMainActivity {
 
     }
 
+    public void onResetBuyingClicked() {
+        DeviceManager.getInstance().resetTrade();
+    }
 }

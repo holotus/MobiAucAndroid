@@ -2,6 +2,7 @@
 <layout xmlns:android="http://schemas.android.com/apk/res/android">
 
     <data>
+        <import type="android.view.View" />
 
         <variable
             name="device"
@@ -24,7 +25,7 @@
             android:drawablePadding="16dp"
             android:drawableTint="@color/textColor"
             android:gravity="center_vertical"
-            android:text="@{device.deviceName}"
+            android:text='@{device.deviceName + (device.isTraded ? " (traded)" :"")}'
             android:textColor="@color/textColor"
             android:textSize="18dp" />
 
@@ -33,9 +34,20 @@
             android:layout_height="match_parent"
             android:layout_marginRight="16dp"
             android:gravity="center_vertical"
-            android:text='@{"$" + device.price}'
+            android:text='@{(device.price == 0) ? "(not selling)" : "selling at $" + device.price}'
             android:textColor="@color/textColor"
-            android:textSize="18dp" />
+            android:textSize="18dp"
+            android:visibility="@{device.isSeller ? View.VISIBLE : View.GONE }" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginRight="16dp"
+            android:gravity="center_vertical"
+            android:text='@{"buying at $" + device.price}'
+            android:textColor="@color/textColor"
+            android:textSize="18dp"
+            android:visibility="@{!device.isSeller ? View.VISIBLE : View.GONE }" />
 
     </LinearLayout>
 </layout>

@@ -1,6 +1,7 @@
 package io.hengky.common;
 
 import android.bluetooth.BluetoothSocket;
+import android.databinding.Observable;
 import android.databinding.ObservableBoolean;
 import android.databinding.ObservableField;
 import android.databinding.ObservableInt;
@@ -15,7 +16,7 @@ import java.nio.charset.Charset;
 
 /**
  * Created by yip on 17/5/16.
- * <p/>
+ * <p>
  * Device is Thread.
  */
 public class Device extends Thread {
@@ -28,15 +29,26 @@ public class Device extends Thread {
 
     private final Charset CHARSET = Charset.forName("US-ASCII");
 
-    /**
-     * 0 = not_init, 1 = inited_isseller, 2 = inited_price
-     */
-    public final ObservableInt status = new ObservableInt();
+    //    /**
+//     * 0 = not_init, 1 = inited_isseller, 2 = inited_price
+//     */
+//    public final ObservableInt status = new ObservableInt();
     public final ObservableBoolean isSeller = new ObservableBoolean();
     public final ObservableInt price = new ObservableInt();
+    public final ObservableBoolean isTraded = new ObservableBoolean();
     public final ObservableField<String> deviceName = new ObservableField<>();
 
+    public final ObservableInt data = new ObservableInt();
+
+    protected Device() {
+        // used by special version of Device (ThisDevice, TestDevice) which is not a threat
+        mmSocket = null;
+        mmInStream = null;
+        mmOutStream = null;
+    }
+
     public Device(BluetoothSocket socket) {
+
 
         deviceName.set(socket.getRemoteDevice().getName());
 
@@ -62,7 +74,6 @@ public class Device extends Thread {
         // start reading
         start();
 
-        writeIsSeller(BuildConfigHelper.getInstance().getIsSeller());
     }
 
     public void run() {
@@ -123,15 +134,31 @@ public class Device extends Thread {
     static final int BYTE_BEGIN = 9999;
     static final int BYTE_COMMAND_IS_SELLER = 1;
     static final int BYTE_COMMAND_PRICE = 2;
+    static final int BYTE_COMMAND_IS_TRADED = 3;
+    static final int BYTE_COMMAND_LETS_TRADE = 4;
+    static final int BYTE_COMMAND_RESET_TRADE = 5;
     static final int BYTE_TRUE = 1;
     static final int BYTE_FALSE = 0;
 
-    void writeIsSeller(boolean isSeller) {
+    public void writeIsSeller(boolean isSeller) {
         writeCommand(BYTE_COMMAND_IS_SELLER, isSeller ? BYTE_TRUE : BYTE_FALSE);
     }
 
-    void writePrice(int price) {
+    public void writePrice(int price) {
         writeCommand(BYTE_COMMAND_PRICE, price);
+    }
+
+    public void writeIsTraded(boolean isTraded) {
+        writeCommand(BYTE_COMMAND_IS_TRADED, isTraded ? BYTE_TRUE : BYTE_FALSE);
+    }
+
+    public void writeLetsTrade(float price) {
+        // TODO: send float, don't drop.
+        writeCommand(BYTE_COMMAND_LETS_TRADE, (int)price);
+    }
+
+    public void writeResetTrade() {
+        writeCommand(BYTE_COMMAND_RESET_TRADE, 0);
     }
 
     /**
@@ -163,20 +190,71 @@ public class Device extends Thread {
                 if (begin == BYTE_BEGIN) {
                     if (command == BYTE_COMMAND_IS_SELLER) {
                         if (data == BYTE_TRUE) {
-                            if (status.get() == 0) {
-                                status.set(1);
-                            }
+
                             isSeller.set(true);
                             isFoundCompleteCommand = true;
+
                         } else if (data == BYTE_FALSE) {
-                            if (status.get() == 1) {
-                                status.set(2);
-                            }
+
                             isSeller.set(false);
                             isFoundCompleteCommand = true;
+
                         }
+                    } else if (command == BYTE_COMMAND_IS_TRADED) {
+
+                        if (data == BYTE_TRUE) {
+
+                            isTraded.set(true);
+                            isFoundCompleteCommand = true;
+
+                        } else if (data == BYTE_FALSE) {
+
+                            isTraded.set(false);
+                            isFoundCompleteCommand = true;
+
+                        }
+
                     } else if (command == BYTE_COMMAND_PRICE) {
+
                         price.set(data);
+                        isFoundCompleteCommand = true;
+
+                    } else if (command == BYTE_COMMAND_LETS_TRADE) {
+
+                        if (DeviceManager.getInstance().tradedWithDevice.get() != null) {
+
+                            Log.w(LOG_TAG, "Already traded, LETS_TRADE command from " + deviceName.get() + " is ignored.");
+
+                        } else {
+
+                            DeviceManager.getInstance().letsTrade(data, this);
+
+                            this.isTraded.set(true); // Also, mark the incoming device (may not needed)
+                        }
+
+                        isFoundCompleteCommand = true;
+
+                    } else if (command == BYTE_COMMAND_RESET_TRADE) {
+
+                        if (DeviceManager.getInstance().tradedWithDevice.get() == null) {
+
+                            Log.w(LOG_TAG, "I am not trading, RESET_TRADE command from " + deviceName.get() + " is ignored.");
+
+                        } else {
+
+                            if (!DeviceManager.getInstance().tradedWithDevice.get().getMacAddress().equals(this.getMacAddress())) {
+
+                                Log.w(LOG_TAG, "I am  trading, but not with your, RESET_TRADE command from " + deviceName.get() + " is ignored.");
+
+                            } else {
+
+                                DeviceManager.getInstance().resetTrade();
+
+                                this.isTraded.set(false); // Also, mark the incoming device (may not needed)
+
+                            }
+                        }
+
                         isFoundCompleteCommand = true;
                     }
                 }

@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.databinding.ObservableBoolean;
+import android.databinding.ObservableInt;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -29,6 +30,7 @@ import java.util.ArrayList;
 public class BaseMainActivity extends AppCompatActivity {
 
     public final ObservableBoolean isDiscoverable = new ObservableBoolean();
+//    public final ObservableInt price = new ObservableInt();
 
     static final String LOG_TAG = BaseMainActivity.class.getSimpleName();
     static final int NULL_INT = -1;
@@ -38,6 +40,8 @@ public class BaseMainActivity extends AppCompatActivity {
 
     ProgressDialog mProgressDialog;
     AlertDialog mDiscoverableStoppedAlert;
+
+    long discoveryTime;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -134,6 +138,8 @@ public class BaseMainActivity extends AppCompatActivity {
 
                     BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                     Log.i(LOG_TAG, "BluetoothDevice.ACTION_FOUND ***** FOUND DEVICE *****: " + device.getName());
+                    Log.i(LOG_TAG, "discoveryTime: " + (System.currentTimeMillis() - discoveryTime));
+
                     BluetoothSocketManager.getInstance().startConnect(device);
                     break;
 
@@ -142,6 +148,7 @@ public class BaseMainActivity extends AppCompatActivity {
                 case BluetoothAdapter.ACTION_DISCOVERY_FINISHED: {
 
                     Log.i(LOG_TAG, "BluetoothAdapter.ACTION_DISCOVERY_FINISHED");
+                    Log.i(LOG_TAG, "discoveryTime: " + (System.currentTimeMillis() - discoveryTime));
                     onDiscoveringChanged(false);
                     break;
                 }
@@ -245,6 +252,9 @@ public class BaseMainActivity extends AppCompatActivity {
     }
 
     protected void startDiscovery() {
+
+        discoveryTime = System.currentTimeMillis();
+        Log.i(LOG_TAG, "discoveryTime: " + (System.currentTimeMillis() - discoveryTime));
         BluetoothAdapter.getDefaultAdapter().startDiscovery();
     }
 

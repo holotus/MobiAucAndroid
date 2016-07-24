@@ -8,9 +8,15 @@
 
         <import type="io.hengky.common.BuildConfigHelper" />
 
+        <import type="io.hengky.mobiaucseller.view.MainActivity" />
+
         <variable
             name="state"
-            type="io.hengky.common.BaseMainActivity" />
+            type="io.hengky.mobiaucseller.view.MainActivity" />
+
+        <variable
+            name="deviceManager"
+            type="io.hengky.common.DeviceManager" />
 
     </data>
 
@@ -50,42 +56,83 @@
             android:layout_height="wrap_content"
             android:background="@color/colorPrimaryDark"
             android:orientation="horizontal"
-            android:padding="16dp"
-            android:visibility="@{state.isDiscoverable ? View.VISIBLE : View.GONE }"
+            android:visibility="@{ state.isDiscoverable &amp;&amp; state.sellingState == MainActivity.SELLING_STATE_INIT ? View.VISIBLE : View.GONE}">
+
+            <Button
+                android:id="@+id/start_selling"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="16dp"
+                android:onClick="@{() -> state.onStartSellingClicked()}"
+                android:text="Start selling" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/colorPrimaryDark"
+            android:orientation="horizontal"
+            android:visibility="@{ state.isDiscoverable &amp;&amp; state.sellingState == MainActivity.SELLING_STATE_SELLING ? View.VISIBLE : View.GONE}"
             android:weightSum="1">
 
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
+                android:layout_marginLeft="16dp"
                 android:layout_weight="1"
                 android:gravity="center_vertical"
-                android:text='@{ io.hengky.common.BuildConfigHelper.instance.isSeller ? "Ask Price" : "Bid Price"}'
+                android:text='@{ "Trying to sell at $" + deviceManager.price }'
                 android:textColor="#ffff"
                 android:textSize="18dp" />
 
             <Button
-                android:id="@+id/price_1_btn"
+                android:id="@+id/stop_selling"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="$5" />
-
-            <Button
-                android:id="@+id/price_2_btn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="$99" />
+                android:layout_margin="16dp"
+                android:onClick="@{() -> state.onResetSellingClicked()}"
+                android:text='@{ "Cancel (" + state.secondsLeft + "s)" }' />
 
         </LinearLayout>
 
-        <ImageButton
-            android:id="@+id/update_btn"
-            style="@style/Widget.AppCompat.Button.Borderless"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="right"
-            android:src="@drawable/ic_refresh_black_24dp"
-            android:tint="@color/textColor"
-            android:visibility="@{state.isDiscoverable ? View.VISIBLE : View.GONE }" />
+            android:background="@color/colorPrimaryDark"
+            android:orientation="horizontal"
+            android:visibility="@{state.isDiscoverable &amp;&amp; state.sellingState == MainActivity.SELLING_STATE_SOLD ? View.VISIBLE : View.GONE}"
+            android:weightSum="1">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginLeft="16dp"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:text='@{ "Sold to "+ deviceManager.tradedWithDevice.deviceName +" at $" + deviceManager.tradedAtPrice}'
+                android:textColor="#ffff"
+                android:textSize="18dp" />
+
+            <Button
+                android:id="@+id/reset_selling"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="16dp"
+                android:onClick="@{() -> state.onResetSellingClicked()}"
+                android:text="Reset" />
+
+        </LinearLayout>
+
+        <!--<ImageButton-->
+        <!--android:id="@+id/update_btn"-->
+        <!--style="@style/Widget.AppCompat.Button.Borderless"-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:layout_gravity="right"-->
+        <!--android:src="@drawable/ic_refresh_black_24dp"-->
+        <!--android:tint="@color/textColor"-->
+        <!--android:visibility="@{state.isDiscoverable ? View.VISIBLE : View.GONE }" />-->
 
         <ListView
             android:id="@+id/device_list"
